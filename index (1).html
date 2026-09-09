@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chakraphong Taenglek — 3D Portfolio</title>
+  <meta name="description" content="Interactive 3D portfolio by Chakraphong Taenglek (Nine) using Three.js, PBR and GLSL shaders." />
+  <style>
+    :root{--bg:#07090f;--panel:rgba(8,10,18,.78);--line:rgba(255,255,255,.1);--muted:#98a0b3;--text:#f4f6fb;--red:#ff4655;--red2:#d93647;--cyan:#79e7ff;}
+    *{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
+    #app{position:fixed;inset:0} canvas{display:block}
+    .hud{position:fixed;inset:0;pointer-events:none}
+    .topbar{position:absolute;left:28px;right:28px;top:24px;display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:14px}
+    .mark{width:34px;height:34px;border:1px solid rgba(255,70,85,.55);display:grid;place-items:center;transform:skew(-12deg);box-shadow:0 0 26px rgba(255,70,85,.2);background:rgba(255,70,85,.06)}
+    .mark:before,.mark:after{content:"";width:16px;height:4px;background:var(--red);display:block;transform:skew(12deg)} .mark:after{margin-top:-9px;transform:skew(12deg) translateX(5px)}
+    .brand strong{font-size:13px;letter-spacing:.2em;text-transform:uppercase}.brand span{display:block;font-size:11px;color:var(--muted);letter-spacing:.1em;margin-top:2px}
+    .chip{pointer-events:auto;padding:8px 12px;border:1px solid var(--line);background:rgba(8,10,18,.5);backdrop-filter:blur(10px);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#cdd3e0}
+    .left{position:absolute;left:32px;top:17vh;width:min(420px,38vw)}
+    .eyebrow{font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:var(--red);font-weight:700;margin-bottom:14px}
+    h1{font-size:clamp(48px,7.2vw,104px);line-height:.86;margin:0;font-weight:900;letter-spacing:-.06em;text-transform:uppercase}
+    h1 span{color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.5);text-stroke:1px rgba(255,255,255,.5)}
+    .role{margin-top:18px;font-size:15px;color:#d7dbe5;letter-spacing:.08em;text-transform:uppercase}.bio{margin-top:10px;max-width:360px;color:var(--muted);font-size:13px;line-height:1.7}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:24px;max-width:360px}.stat{border-left:1px solid var(--line);padding-left:10px}.stat b{display:block;font-size:18px}.stat small{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+    .panel{position:absolute;right:28px;top:100px;width:250px;padding:15px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(16px);box-shadow:0 12px 48px rgba(0,0,0,.35);pointer-events:auto}
+    .panel h3{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#d9deeb;margin:0 0 12px}.row{display:flex;gap:8px;margin-bottom:8px}.btn{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.035);color:#dbe0eb;padding:9px 10px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.2s}.btn:hover{border-color:rgba(255,70,85,.5);background:rgba(255,70,85,.07)}.btn.active{border-color:rgba(255,70,85,.85);background:rgba(255,70,85,.1);color:#fff}.hint{font-size:10px;line-height:1.6;color:var(--muted);margin-top:9px}
+    .bottom{position:absolute;left:32px;right:32px;bottom:22px;display:flex;align-items:flex-end;justify-content:space-between}.meta{font-size:10px;color:var(--muted);letter-spacing:.13em;text-transform:uppercase}.meta b{color:#e9edf5}.scroll{font-size:9px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
+    .reticle{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);opacity:.42}.reticle:before,.reticle:after{content:"";position:absolute;background:#fff}.reticle:before{left:10px;top:0;width:1px;height:22px}.reticle:after{top:10px;left:0;width:22px;height:1px}
+    .corner{position:absolute;width:70px;height:70px;border-color:rgba(255,70,85,.55);border-style:solid;opacity:.55}.tl{left:0;top:0;border-width:1px 0 0 1px}.br{right:0;bottom:0;border-width:0 1px 1px 0}
+    #loader{position:fixed;inset:0;display:grid;place-items:center;background:#07090f;z-index:20;transition:.6s}.loaderBox{text-align:center}.loaderBox .big{font-size:12px;letter-spacing:.35em;text-transform:uppercase;color:#fff}.bar{width:220px;height:2px;background:#1a1d27;margin:15px auto 0;overflow:hidden}.bar i{display:block;width:45%;height:100%;background:var(--red);animation:load 1.15s ease-in-out infinite}@keyframes load{0%{transform:translateX(-110%)}100%{transform:translateX(230%)}}
+    @media (max-width:900px){.left{left:20px;top:13vh;width:62vw}.panel{right:16px;top:auto;bottom:66px;width:220px}.topbar{left:20px;right:20px;top:16px}.bottom{left:20px;right:20px}h1{font-size:clamp(44px,12vw,88px)}}
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="loader"><div class="loaderBox"><div class="big">INITIALIZING 3D PORTFOLIO</div><div class="bar"><i></i></div></div></div>
+  <div class="hud">
+    <div class="corner tl"></div><div class="corner br"></div>
+    <header class="topbar">
+      <div class="brand"><div class="mark"></div><div><strong>VALORANT // 3D LAB</strong><span>portfolio · real-time graphics</span></div></div>
+      <div class="chip">GLSL / PBR / WEBGL 2</div>
+    </header>
+    <section class="left">
+      <div class="eyebrow">Creative Developer · 3D Artist</div>
+      <h1>CHAKRAPHONG<br><span>TAENGLEK</span></h1>
+      <div class="role">NINE · AGE 22</div>
+      <p class="bio">Interactive portfolio showcase — ออกแบบโมเดล 3D, วัสดุ PBR, lighting และ shader แบบเรียลไทม์บนเว็บ</p>
+      <div class="stats">
+        <div class="stat"><b>03D</b><small>Model Focus</small></div><div class="stat"><b>GLSL</b><small>Shader Lab</small></div><div class="stat"><b>PBR</b><small>Material</small></div>
+      </div>
+    </section>
+    <aside class="panel">
+      <h3>Scene Controls</h3>
+      <div class="row"><button class="btn active" id="trainBtn">Train</button><button class="btn" id="helmetBtn">PBR Model</button></div>
+      <div class="row"><button class="btn active" id="shaderBtn">Shader ON</button><button class="btn" id="orbitBtn">Reset View</button></div>
+      <div class="hint">Drag = orbit camera · Wheel = zoom · Right drag = pan<br>คลิกปุ่มเพื่อสลับโมเดลและเอฟเฟกต์</div>
+    </aside>
+    <div class="reticle"></div>
+    <div class="bottom"><div class="meta">CHAKRAPHONG TAENGLEK · <b>NINE</b> · 22</div><div class="scroll">MOUSE / TOUCH TO EXPLORE</div></div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const app = document.getElementById('app');
+    const loaderUI = document.getElementById('loader');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x07090f, 0.038);
+
+    const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, .1, 300);
+    camera.position.set(8.5, 4.5, 12);
+
+    const renderer = new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+    renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.14;
+    app.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor=.06; controls.minDistance=4; controls.maxDistance=28;
+    controls.target.set(0,1.2,0);
+
+    // Realistic PBR lighting via a neutral studio environment.
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envScene = new RoomEnvironment(renderer);
+    scene.environment = pmrem.fromScene(envScene, .04).texture;
+    envScene.dispose();
+
+    const hemi = new THREE.HemisphereLight(0xeff5ff,0x090b10,1.6); scene.add(hemi);
+    const key = new THREE.DirectionalLight(0xffffff,4.2); key.position.set(-5,9,8); key.castShadow=true; scene.add(key);
+    const red = new THREE.PointLight(0xff4655,18,18,2); red.position.set(-5,3,1); scene.add(red);
+    const cyan = new THREE.PointLight(0x72e6ff,10,16,2); cyan.position.set(6,2,-5); scene.add(cyan);
+
+    // Custom GLSL backdrop + post-like animated energy plane.
+    const shaderUniforms = {uTime:{value:0},uIntensity:{value:1}};
+    const shaderMat = new THREE.ShaderMaterial({
+      uniforms:shaderUniforms, transparent:true, depthWrite:false,
+      vertexShader:`varying vec2 vUv; void main(){vUv=uv; vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.0); gl_Position=p;}`,
+      fragmentShader:`
+        precision highp float; varying vec2 vUv; uniform float uTime; uniform float uIntensity;
+        float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);} 
+        float noise(vec2 p){vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(hash(i),hash(i+vec2(1.,0)),f.x),mix(hash(i+vec2(0.,1)),hash(i+vec2(1.,1)),f.x),f.y);} 
+        void main(){vec2 uv=vUv; float n=noise(uv*9.0+uTime*.18); float diag=pow(max(0.0,1.0-abs(uv.x-uv.y*.75-.12)*4.6),5.0); float scan=.5+.5*sin((uv.y*180.0-uTime*7.0)); vec3 c=mix(vec3(.025,.03,.055),vec3(.12,.015,.025),diag); c += vec3(.08,.18,.24)*n*.12; c += vec3(1.,.045,.09)*diag*scan*.06*uIntensity; float vign=1.-smoothstep(.15,.85,distance(uv,vec2(.5))); gl_FragColor=vec4(c*(.55+.65*vign),1.0);}`
+    });
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(2,2),shaderMat); back.frustumCulled=false; back.renderOrder=-50; back.position.z=-30; scene.add(back);
+
+    // Floor / rail platform.
+    const floorMat = new THREE.MeshStandardMaterial({color:0x0b0d13,metalness:.75,roughness:.32});
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(28,.18,28),floorMat); floor.position.y=-.12; scene.add(floor);
+    const stripeMat = new THREE.MeshBasicMaterial({color:0xff4655,transparent:true,opacity:.16});
+    for(let i=-5;i<=5;i++){ const s=new THREE.Mesh(new THREE.BoxGeometry(.035,.01,26),stripeMat); s.position.set(i*1.5,.0,0); scene.add(s); }
+
+    const railMat = new THREE.MeshStandardMaterial({color:0x5c626b,metalness:.95,roughness:.23});
+    const woodMat = new THREE.MeshStandardMaterial({color:0x26252a,metalness:.12,roughness:.9});
+    const railGroup = new THREE.Group(); railGroup.position.z=1;
+    for(const x of [-1.25,1.25]){const r=new THREE.Mesh(new THREE.BoxGeometry(.16,.12,18),railMat); r.position.set(x,.12,0); railGroup.add(r)}
+    for(let z=-8;z<=8;z+=.75){const s=new THREE.Mesh(new THREE.BoxGeometry(3.5,.12,.15),woodMat); s.position.set(0,.01,z); railGroup.add(s)}
+    scene.add(railGroup);
+
+    // Procedural realistic-ish train built from PBR pieces.
+    let train = new THREE.Group(); train.name='TRAIN'; scene.add(train);
+    const trainRed = new THREE.MeshPhysicalMaterial({color:0x8f111f,metalness:.78,roughness:.24,clearcoat:.75,clearcoatRoughness:.16});
+    const trainDark = new THREE.MeshPhysicalMaterial({color:0x0b0d12,metalness:.92,roughness:.2});
+    const steel = new THREE.MeshStandardMaterial({color:0x737983,metalness:1,roughness:.2});
+    const glass = new THREE.MeshPhysicalMaterial({color:0x0a1822,metalness:.25,roughness:.08,transmission:.15,thickness:.25,ior:1.45,transparent:true});
+    const brass = new THREE.MeshStandardMaterial({color:0x6c4d2a,metalness:.92,roughness:.22});
+
+    function roundedBox(w,h,d,r=.15,mat=trainRed){ const shape=new THREE.Shape(); const x=w/2,y=h/2; shape.moveTo(-x+r,-y); shape.lineTo(x-r,-y); shape.quadraticCurveTo(x,-y,x,-y+r); shape.lineTo(x,y-r); shape.quadraticCurveTo(x,y,x-r,y); shape.lineTo(-x+r,y); shape.quadraticCurveTo(-x,y,-x,y-r); shape.lineTo(-x,-y+r); shape.quadraticCurveTo(-x,-y,-x+r,-y); const geo=new THREE.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelSegments:3,bevelSize:.06,bevelThickness:.05}); geo.center(); const m=new THREE.Mesh(geo,mat); return m; }
+
+    const body=roundedBox(3.3,1.7,6.8,.2,trainRed); body.position.y=1.65; train.add(body);
+    const roof=roundedBox(3.45,.32,6.95,.12,trainDark); roof.position.y=2.62; train.add(roof);
+    const front=roundedBox(3.08,1.15,.24,.08,trainDark); front.position.set(0,1.68,3.5); train.add(front);
+    const wind=roundedBox(2.1,.55,.08,.06,glass); wind.position.set(0,2.05,3.64); train.add(wind);
+    const lower=roundedBox(3.0,.34,6.9,.08,trainDark); lower.position.y=.83; train.add(lower);
+    for(const x of [-1.35,1.35]){const sideStripe=roundedBox(.08,.15,6.7,.03,steel); sideStripe.position.set(x,1.75,0); train.add(sideStripe)}
+    const lampGeo=new THREE.CylinderGeometry(.11,.11,.09,20); for(const x of [-.65,.65]){const lamp=new THREE.Mesh(lampGeo, new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffdede,emissiveIntensity:5,metalness:.1,roughness:.18})); lamp.rotation.x=Math.PI/2; lamp.position.set(x,1.1,3.66); train.add(lamp)}
+    // wheels + bogies
+    for(const z of [-2.1,2.1]){
+      const bogie=new THREE.Mesh(new THREE.BoxGeometry(2.35,.22,1.05),trainDark); bogie.position.set(0,.55,z); train.add(bogie);
+      for(const x of [-.92,.92]){const wh=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.22,32),steel); wh.rotation.z=Math.PI/2; wh.position.set(x,.32,z); train.add(wh);}
+    }
+    const coupler=new THREE.Mesh(new THREE.BoxGeometry(.35,.35,.5),brass); coupler.position.set(0,.85,3.96); train.add(coupler);
+    train.position.set(0,0,-.7); train.rotation.y=.12;
+
+    // Add emissive contour accents that are easy to see in the dark scene.
+    const accentMat=new THREE.MeshStandardMaterial({color:0xff4655,emissive:0xff1021,emissiveIntensity:2.4,metalness:.15,roughness:.25});
+    for(const y of [2.55,.96]){const line=new THREE.Mesh(new THREE.BoxGeometry(3.28,.025,6.55),accentMat); line.position.y=y; train.add(line);}
+
+    // Advanced shader ring around the hero model.
+    const ringMat = new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{uTime:{value:0},uPower:{value:1}},
+      vertexShader:`varying vec3 vN;varying vec3 vP;void main(){vN=normalMatrix*normal;vP=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      fragmentShader:`precision highp float;varying vec3 vN;varying vec3 vP;uniform float uTime;uniform float uPower;void main(){float fres=pow(1.-max(0.,dot(normalize(vN),normalize(cameraPosition-vP))),3.0);float pulse=.55+.45*sin(uTime*3.2+vP.y*2.);vec3 col=mix(vec3(1.,.08,.12),vec3(.3,.9,1.),.45+.3*sin(uTime+vP.x));float alpha=fres*.42*pulse*uPower;gl_FragColor=vec4(col,alpha);}`
+    });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.8,.012,10,240),ringMat); ring.rotation.x=Math.PI/2; ring.position.y=.02; scene.add(ring);
+
+    // Public PBR sample model (official Three.js example). Use this to demonstrate real PBR asset delivery.
+    const gltfLoader=new GLTFLoader();
+    const pbrGroup=new THREE.Group(); pbrGroup.visible=false; pbrGroup.position.set(0,1.0,0); scene.add(pbrGroup);
+    let pbrReady=false;
+    const pbrURL='https://threejs.org/examples/models/gltf/DamagedHelmet/glTF-Binary/DamagedHelmet.glb';
+    gltfLoader.load(pbrURL, gltf=>{
+      const model=gltf.scene; model.scale.setScalar(2.35); pbrGroup.add(model); pbrReady=true;
+      model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+    }, undefined, err=>{console.warn('PBR model could not be loaded. Train scene remains available.',err)});
+
+    // Particle field.
+    const count=1200, pos=new Float32Array(count*3), col=new Float32Array(count*3);
+    for(let i=0;i<count;i++){const i3=i*3; pos[i3]=(Math.random()-.5)*34; pos[i3+1]=Math.random()*12-.2; pos[i3+2]=(Math.random()-.5)*30; const warm=Math.random()>.82; col[i3]=warm?1:.45;col[i3+1]=warm?.09:.7;col[i3+2]=warm?.12:1;}
+    const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pos,3));pg.setAttribute('color',new THREE.BufferAttribute(col,3));
+    const pm=new THREE.PointsMaterial({size:.035,vertexColors:true,transparent:true,opacity:.62,depthWrite:false,blending:THREE.AdditiveBlending}); scene.add(new THREE.Points(pg,pm));
+
+    let active='train'; let shaderOn=true;
+    const trainBtn=document.getElementById('trainBtn'), helmetBtn=document.getElementById('helmetBtn'), shaderBtn=document.getElementById('shaderBtn'), orbitBtn=document.getElementById('orbitBtn');
+    function setActive(which){active=which; train.visible=which==='train';pbrGroup.visible=which==='helmet'&&pbrReady;trainBtn.classList.toggle('active',which==='train');helmetBtn.classList.toggle('active',which==='helmet');controls.target.set(0,1.2,0);}
+    trainBtn.onclick=()=>setActive('train'); helmetBtn.onclick=()=>setActive('helmet');
+    shaderBtn.onclick=()=>{shaderOn=!shaderOn;shaderBtn.classList.toggle('active',shaderOn);shaderUniforms.uIntensity.value=shaderOn?1:0;ringMat.uniforms.uPower.value=shaderOn?1:0};
+    orbitBtn.onclick=()=>{camera.position.set(8.5,4.5,12);controls.target.set(0,1.2,0);controls.update()};
+
+    addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+    const clock=new THREE.Clock();
+    function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();shaderUniforms.uTime.value=t;ringMat.uniforms.uTime.value=t;ring.rotation.z=t*.08;train.rotation.y=.12+Math.sin(t*.3)*.02;if(pbrGroup.visible)pbrGroup.rotation.y=t*.16;controls.update();renderer.render(scene,camera);}
+    animate();
+    setTimeout(()=>loaderUI.style.opacity='0',600); setTimeout(()=>loaderUI.remove(),1200);
+  </script>
+</body>
+</html>
