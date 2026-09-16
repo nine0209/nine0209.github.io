@@ -17,14 +17,14 @@
     <a-asset-item id="headModel" 
       src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/sparkar/headOccluder.glb"></a-asset-item>
     <a-asset-item id="head1Model" 
-      src="https://nine0209.github.io/futuristic_samurai_hat.glb"></a-asset-item>
+      src="https://nine0209.github.io/hat.glb"></a-asset-item>
   </a-assets>
 
 
   <!-- Anchor กับตำแหน่งบนใบหน้า -->
    <a-entity mindar-face-target="anchorIndex: 10"> <!-- หมวก -->
     <a-gltf-model 
-        rotation="0 0 0" position="0 0.5 0" scale=" 0.01 0.01 0.01 " 
+        rotation="0 0 0" position="0 0.5 0" scale=" 0.10 0.10 0.10 " 
         src="#head1Model">
     </a-gltf-model>
   </a-entity>
@@ -59,9 +59,7 @@
   <a-entity mindar-face-target="anchorIndex: 280">
     <a-box position="0 0 0" scale="0.03 0.03 0.03" color="red"></a-box>
   </a-entity>
-  <a-entity mindar-face-target="anchorIndex: 10">
-    <a-box position="0 0 0" scale="0.1 0.1 0.1" color="red"></a-box>
-  </a-entity>
+ 
 
   <a-camera active="false" position="0 0 0"> </a-camera>
 
