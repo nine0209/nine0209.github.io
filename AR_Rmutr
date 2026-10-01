@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+
+</head>
+
+
+
+<body>
+
+<a-scene
+
+  mindar-image="imageTargetSrc: https://montakan004.github.io/targets3.mind;"
+
+  vr-mode-ui="enabled: false"
+
+  device-orientation-permission-ui="enabled: false">
+
+
+
+  <a-assets>
+
+    <a-asset-item id="model0" src="https://montakan004.github.io/bloombox.glb"></a-asset-item>
+
+    <audio id="voice0" src="https://montakan004.github.io/Introduction to Game and Animation.mp4" preload="auto"></audio>
+
+
+
+  </a-assets>
+
+
+
+  <!-- Target 1 -->
+
+  <a-entity mindar-image-target="targetIndex: 0">
+
+    <a-gltf-model src="#model0" animation-mixer rotation="0 0 0" scale="0.55 0.55 0.55"></a-gltf-model>
+
+  </a-entity>
+
+
+
+  <!-- Target 2 -->
+
+  <a-entity mindar-image-target="targetIndex: 1">
+
+    <a-gltf-model src="#model1" animation-mixer></a-gltf-model>
+
+  </a-entity>
+
+
+
+  <!-- Target 3 -->
+
+  <a-entity mindar-image-target="targetIndex: 2">
+
+    <a-gltf-model src="#model2" animation-mixer></a-gltf-model>
+
+  </a-entity>
+
+
+
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+
+
+</a-scene>
+
+<script>
+
+  window.addEventListener("load", function () {
+
+    // ผูกเสียงกับ target ตามลำดับ (index 0, 1, 2)
+
+    var voices = ["voice0", "voice1", "voice2"];
+
+    var targets = document.querySelectorAll("[mindar-image-target]");
+
+
+
+    targets.forEach(function (target, i) {
+
+      var audio = document.getElementById(voices[i]);
+
+      if (!audio) return; // ถ้ายังไม่มีไฟล์เสียงของ target นี้ ก็ข้ามไป
+
+
+
+      target.addEventListener("targetFound", function () {
+
+        audio.currentTime = 0;
+
+        audio.play().catch(function (e) { console.log("เล่นเสียงไม่ได้:", e); });
+
+      });
+
+
+
+      target.addEventListener("targetLost", function () {
+
+        audio.pause();
+
+      });
+
+    });
+
+
+
+    // ปลดล็อกเสียงบนมือถือ (เบราว์เซอร์บังคับให้ต้องมีการแตะก่อน)
+
+    function unlockAudio() {
+
+      ["voice0", "voice1", "voice2"].forEach(function (id) {
+
+        var a = document.getElementById(id);
+
+        if (a) { a.play().then(function () { a.pause(); a.currentTime = 0; }).catch(function () {}); }
+
+      });
+
+      document.removeEventListener("click", unlockAudio);
+
+      document.removeEventListener("touchstart", unlockAudio);
+
+    }
+
+    document.addEventListener("click", unlockAudio);
+
+    document.addEventListener("touchstart", unlockAudio);
+
+  });
+
+</script>
+
+</body>
+
+</html> โค้ดนี้คืออะไร ถ้าต้องการเปลี่ยนโมเดล เปลี่ยนเสียงพูดต้องทำอย่างไร 
