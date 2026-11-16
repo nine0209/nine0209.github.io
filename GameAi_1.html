@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#07546d">
+<title>Forest Run</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080d12;font-family:Arial,"Noto Sans Thai",sans-serif;color:#fff}
+body{touch-action:none;user-select:none;-webkit-user-select:none}
+#game{display:block;width:100%;height:100%;touch-action:none}
+#hud{position:absolute;z-index:2;top:0;left:0;width:100%;min-height:64px;padding:8px 76px 8px 8px;background:#07546deF;display:flex;justify-content:space-around;align-items:center;text-align:center;border-bottom:3px solid #36b9d2}
+.stat{min-width:0}.stat small{display:block;font-size:clamp(8px,1.8vw,11px);color:#a8e8f5;letter-spacing:.08em}.stat strong{font-size:clamp(14px,3vw,21px);font-variant-numeric:tabular-nums}
+#pause{position:absolute;z-index:4;right:10px;top:74px;background:#07546d;border:1px solid #6ee6c2;color:#fff;padding:10px 12px;border-radius:10px;font-weight:bold}
+#controls{position:absolute;z-index:3;bottom:max(18px,env(safe-area-inset-bottom));left:0;width:100%;display:flex;justify-content:space-evenly;align-items:center;pointer-events:none}
+.ctrl{pointer-events:auto;border:1px solid #ffffff66;background:#102c32bb;color:white;border-radius:16px;min-width:68px;min-height:58px;padding:12px 18px;font-size:22px;font-weight:bold;touch-action:none}
+#jump{background:#e98225;border-color:#ffc078;min-width:108px}
+#overlay{position:absolute;z-index:5;inset:0;display:flex;justify-content:center;align-items:center;padding:18px;background:#0009}
+.panel{width:min(92vw,390px);background:#102c32;padding:26px 22px;border:2px solid #36c7b6;border-radius:20px;text-align:center;box-shadow:0 18px 60px #0008}
+.panel h1{margin:0 0 12px;color:#6ee6c2;font-size:clamp(25px,7vw,36px)}
+.panel p{line-height:1.55;margin:8px 0;color:#e4f5f2}
+.panel button{margin-top:12px;background:#ff9d35;color:white;border:0;border-radius:12px;padding:13px 30px;font-size:18px;font-weight:bold}
+.hidden{display:none!important}
+.hint{font-size:12px!important;color:#b7d6d2!important}
+@media(max-height:520px){#hud{min-height:48px;padding-top:4px;padding-bottom:4px}.stat strong{font-size:15px}#pause{top:54px;padding:7px 9px}.ctrl{min-height:46px;padding:8px 14px}.panel{padding:16px}.panel p{margin:5px}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="เกม Forest Run"></canvas>
+<div id="hud">
+ <div class="stat"><small>SCORE</small><strong id="score">00000</strong></div>
+ <div class="stat"><small>DISTANCE</small><strong id="distance">0m</strong></div>
+ <div class="stat"><small>COINS</small><strong id="coins">000</strong></div>
+ <div class="stat"><small>SPEED</small><strong id="speed">42</strong></div>
+</div>
+<button id="pause" type="button">Ⅱ PAUSE</button>
+<div id="controls">
+ <button class="ctrl" id="left" type="button" aria-label="เลี้ยวซ้าย">◀</button>
+ <button class="ctrl" id="right" type="button" aria-label="เลี้ยวขวา">▶</button>
+ <button class="ctrl" id="jump" type="button">JUMP ↑</button>
+</div>
+<div id="overlay">
+ <div class="panel">
+  <h1 id="panelTitle">🌲 FOREST RUN</h1>
+  <p id="panelMessage">วิ่งให้ไกล เก็บเหรียญให้เยอะ!</p>
+  <p>◀ ▶ หรือ A / D เพื่อเปลี่ยนเลน</p>
+  <p>SPACE / ↑ / ปุ่ม JUMP เพื่อกระโดด</p>
+  <p class="hint">หลบก้อนหินและท่อนไม้ เก็บเหรียญระหว่างทาง</p>
+  <button id="start" type="button">START GAME</button>
+ </div>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W=innerWidth,H=innerHeight,dpr=1;
+let running=false,paused=false,gameOver=false;
+let score=0,coins=0,distance=0,speed=42,world=0;
+let lane=1,targetLane=1,jump=0,jumpVelocity=0;
+let obstacles=[],items=[],trees=[];
+let spawnTimer=900,coinTimer=1300,lastTime=0,raf=0;
+
+const rand=(a,b)=>Math.random()*(b-a)+a;
+function resize(){
+ dpr=Math.min(window.devicePixelRatio||1,2);
+ W=window.innerWidth;H=window.innerHeight;
+ canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+ canvas.style.width=W+'px';canvas.style.height=H+'px';
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function reset(){
+ score=0;coins=0;distance=0;speed=42;world=0;
+ lane=1;targetLane=1;jump=0;jumpVelocity=0;
+ obstacles=[];items=[];spawnTimer=900;coinTimer=1300;
+ trees=[];
+ for(let i=0;i<65;i++)trees.push({z:i/65,side:Math.random()<.5?-1:1,size:rand(.7,1.4)});
+ updateHUD();
+}
+function updateHUD(){
+ $('score').textContent=String(score).padStart(5,'0');
+ $('coins').textContent=String(coins).padStart(3,'0');
+ $('distance').textContent=Math.floor(distance)+'m';
+ $('speed').textContent=Math.floor(speed);
+}
+function roadPoint(z){
+ const horizon=H*.24,bottom=H*.93;
+ const y=horizon+Math.pow(Math.max(0,z),1.65)*(bottom-horizon);
+ const width=W*(.09+z*.65);
+ const center=W/2+Math.sin(world*.0005)*W*.015*z;
+ return{x:center,y,width};
+}
+function lanePosition(l,z){const p=roadPoint(z);return p.x+(l-1)*p.width*.29}
+function drawTree(x,y,size){
+ ctx.save();ctx.translate(x,y);
+ ctx.fillStyle='#815b38';ctx.fillRect(-size*.07,-size*.6,size*.14,size*.6);
+ for(let i=0;i<3;i++){ctx.fillStyle=i===0?'#08794a':i===1?'#0b9255':'#19a96b';ctx.beginPath();ctx.arc(0,-size*(.7+i*.16),size*(.25-i*.025),0,Math.PI*2);ctx.fill()}
+ ctx.restore();
+}
+function drawBackground(){
+ const sky=ctx.createLinearGradient(0,0,0,H*.55);sky.addColorStop(0,'#38b5ef');sky.addColorStop(1,'#a1e8f6');
+ ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='#46b96c';ctx.fillRect(0,H*.25,W,H*.75);
+ ctx.fillStyle='#299c61';ctx.beginPath();ctx.moveTo(0,H*.34);
+ for(let x=0;x<=W+30;x+=30)ctx.lineTo(x,H*.31+Math.sin(x*.015)*15);
+ ctx.lineTo(W,H*.55);ctx.lineTo(0,H*.55);ctx.fill();
+}
+function drawRoad(){
+ const top=roadPoint(0),bottom=roadPoint(1);
+ ctx.beginPath();ctx.moveTo(top.x-top.width/2,top.y);ctx.lineTo(top.x+top.width/2,top.y);
+ ctx.lineTo(bottom.x+bottom.width/2,bottom.y);ctx.lineTo(bottom.x-bottom.width/2,bottom.y);ctx.closePath();
+ ctx.fillStyle='#a9794d';ctx.fill();
+ ctx.strokeStyle='#45d1d0';ctx.lineWidth=4;ctx.beginPath();
+ ctx.moveTo(top.x-top.width/2,top.y);ctx.lineTo(bottom.x-bottom.width/2,bottom.y);
+ ctx.moveTo(top.x+top.width/2,top.y);ctx.lineTo(bottom.x+bottom.width/2,bottom.y);ctx.stroke();
+ // เส้นแบ่งเลนเคลื่อนที่ตามพื้นถนน
+ for(let i=1;i<=2;i++)for(let j=0;j<14;j++){
+  const z=(j/14+world*.0008)%1,p=roadPoint(z),x=p.x+(i-1.5)*p.width/3;
+  ctx.strokeStyle='#e4c49b99';ctx.lineWidth=1+z*2;
+  ctx.beginPath();ctx.moveTo(x,p.y);ctx.lineTo(x,p.y+Math.max(2,z*13));ctx.stroke();
+ }
+}
+function drawForest(){
+ for(const t of trees){const z=(t.z+world*.00012)%1,p=roadPoint(z);const x=p.x+t.side*(p.width*.5+W*.06*z+10);drawTree(x,p.y,(10+z*75)*t.size)}
+}
+function spawnObstacle(){
+ // ลดการเกิดสิ่งกีดขวางติดกันในเลนเดียวกัน
+ const laneChoices=[0,1,2].filter(l=>!obstacles.some(o=>o.lane===l&&o.z<.2));
+ const l=laneChoices.length?laneChoices[Math.floor(Math.random()*laneChoices.length)]:Math.floor(Math.random()*3);
+ obstacles.push({lane:l,z:0,type:Math.random()<.5?'rock':'log',hit:false});
+}
+function spawnCoins(){
+ const l=Math.floor(Math.random()*3);
+ for(let i=0;i<5;i++)items.push({lane:l,z:-i*.085,taken:false});
+}
+function drawObjects(){
+ obstacles.sort((a,b)=>a.z-b.z);
+ for(const o of obstacles){
+  if(o.z<0||o.z>1)continue;
+  const p=roadPoint(o.z),x=lanePosition(o.lane,o.z),s=10+o.z*48;
+  ctx.save();ctx.translate(x,p.y);
+  if(o.type==='rock'){
+   ctx.fillStyle='#65716d';ctx.beginPath();ctx.ellipse(0,-s*.3,s*.45,s*.3,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle='#a2aaa0';ctx.beginPath();ctx.ellipse(-s*.1,-s*.42,s*.17,s*.09,0,0,Math.PI*2);ctx.fill();
+  }else{ctx.fillStyle='#74462c';ctx.fillRect(-s*.5,-s*.4,s,s*.35)}
+  ctx.restore();
+ }
+ for(const c of items){
+  if(c.taken||c.z<0||c.z>1)continue;
+  const p=roadPoint(c.z),x=lanePosition(c.lane,c.z),s=5+c.z*17;
+  ctx.fillStyle='#ffd83d';ctx.beginPath();ctx.ellipse(x,p.y-s,s*.55,s,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff29b';ctx.lineWidth=2;ctx.stroke();
+ }
+}
+function drawPlayer(){
+ const x=lanePosition(lane,.94),y=H*.83-jump*Math.min(H*.16,85),s=Math.min(W,H)*.075;
+ ctx.save();ctx.translate(x,y);
+ ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(0,30+Math.min(jump*20,35),s*.55,s*.16,0,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#244c9b';ctx.lineWidth=s*.19;ctx.lineCap='round';ctx.beginPath();
+ ctx.moveTo(-s*.13,5);ctx.lineTo(-s*.18,26);ctx.moveTo(s*.13,5);ctx.lineTo(s*.2,26);ctx.stroke();
+ ctx.fillStyle='#e4dfca';ctx.fillRect(-s*.33,22,s*.3,s*.13);ctx.fillRect(s*.06,22,s*.3,s*.13);
+ ctx.fillStyle='#ed795e';ctx.fillRect(-s*.28,-s*.38,s*.56,s*.53);
+ ctx.strokeStyle='#f1ad83';ctx.lineWidth=s*.13;ctx.beginPath();
+ ctx.moveTo(-s*.26,-s*.28);ctx.lineTo(-s*.4,-s*.03);ctx.moveTo(s*.26,-s*.28);ctx.lineTo(s*.4,-s*.03);ctx.stroke();
+ ctx.fillStyle='#f2bb92';ctx.beginPath();ctx.arc(0,-s*.52,s*.23,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#61422f';ctx.beginPath();ctx.arc(0,-s*.62,s*.23,Math.PI,Math.PI*2);ctx.fill();
+ ctx.restore();
+}
+function draw(){drawBackground();drawForest();drawRoad();drawObjects();drawPlayer()}
+function move(dir){if(!running||paused)return;targetLane=Math.max(0,Math.min(2,targetLane+dir))}
+function doJump(){if(!running||paused||jump>0)return;jumpVelocity=10.5}
+function endGame(){
+ running=false;gameOver=true;paused=false;
+ $('panelTitle').textContent='GAME OVER';
+ $('panelMessage').textContent='คะแนน '+score+' | เหรียญ '+coins+' | ระยะทาง '+Math.floor(distance)+' เมตร';
+ $('start').textContent='PLAY AGAIN';$('overlay').classList.remove('hidden');
+ $('pause').textContent='Ⅱ PAUSE';
+}
+function update(dt){
+ if(!running||paused)return;
+ const step=Math.min(dt,50)/16.6667;
+ speed=Math.min(105,42+distance*.018);
+ distance+=speed*step*.012;
+ score+=Math.max(0,Math.floor(speed*step*.025));
+ world+=speed*step;
+ lane+=(targetLane-lane)*Math.min(1,.18*step);
+ jump+=jumpVelocity*step;jumpVelocity-=.65*step;
+ if(jump<0){jump=0;jumpVelocity=0}
+ spawnTimer-=dt;coinTimer-=dt;
+ if(spawnTimer<=0){spawnObstacle();spawnTimer=rand(1000,1550)*(42/speed)}
+ if(coinTimer<=0){spawnCoins();coinTimer=rand(1600,2400)}
+ const travel=speed*step*.0008;
+ obstacles.forEach(o=>o.z+=travel);items.forEach(c=>c.z+=travel);
+ // ตรวจชนในช่วงใกล้ตัวผู้เล่น และป้องกันการชนซ้ำ
+ for(const o of obstacles){
+  if(!o.hit&&o.z>.88&&o.z<1.015&&Math.abs(lane-o.lane)<.38){
+   if(jump<.68){endGame();return}
+   o.hit=true;o.z=1.08;
+  }
+ }
+ for(const c of items){
+  if(!c.taken&&c.z>.88&&c.z<1.015&&Math.abs(lane-c.lane)<.4){c.taken=true;coins++;score+=10}
+ }
+ obstacles=obstacles.filter(o=>o.z<1.18);
+ items=items.filter(c=>c.z<1.18&&!c.taken);
+ updateHUD();
+}
+function loop(time){
+ const dt=lastTime?Math.min(time-lastTime,50):16.667;lastTime=time;
+ update(dt);draw();raf=requestAnimationFrame(loop);
+}
+function startGame(){
+ reset();running=true;paused=false;gameOver=false;
+ $('panelTitle').textContent='🌲 FOREST RUN';$('start').textContent='START GAME';
+ $('overlay').classList.add('hidden');$('pause').textContent='Ⅱ PAUSE';
+}
+function togglePause(){
+ if(!running&&!paused)return;
+ paused=!paused;
+ if(paused){
+  $('panelTitle').textContent='PAUSED';$('panelMessage').textContent='พักเกมชั่วคราว';
+  $('start').textContent='RESUME';$('overlay').classList.remove('hidden');$('pause').textContent='▶ RESUME';
+ }else{$('overlay').classList.add('hidden');$('pause').textContent='Ⅱ PAUSE';lastTime=performance.now()}
+}
+$('start').addEventListener('click',()=>{if(paused){paused=false;$('overlay').classList.add('hidden');$('pause').textContent='Ⅱ PAUSE';lastTime=performance.now()}else startGame()});
+$('pause').addEventListener('click',togglePause);
+[['left',()=>move(-1)],['right',()=>move(1)],['jump',doJump]].forEach(([id,fn])=>{
+ $(id).addEventListener('pointerdown',e=>{e.preventDefault();fn()});
+});
+document.addEventListener('keydown',e=>{
+ const k=e.key.toLowerCase();
+ if(['arrowleft','arrowright','arrowup',' ','a','d','escape'].includes(k))e.preventDefault();
+ if(k==='arrowleft'||k==='a')move(-1);
+ if(k==='arrowright'||k==='d')move(1);
+ if(k===' '||k==='arrowup'||k==='w')doJump();
+ if(k==='escape')togglePause();
+});
+let touchX=0,touchY=0;
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){touchX=e.clientX;touchY=e.clientY}});
+canvas.addEventListener('pointerup',e=>{
+ if(e.pointerType!=='touch'||!running||paused)return;
+ const dx=e.clientX-touchX,dy=e.clientY-touchY;
+ if(Math.abs(dx)>35&&Math.abs(dx)>Math.abs(dy))move(dx>0?1:-1);
+ else if(dy<-35)doJump();
+});
+window.addEventListener('resize',resize);
+window.addEventListener('blur',()=>{if(running&&!paused)togglePause()});
+resize();reset();draw();raf=requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
