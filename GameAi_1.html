@@ -171,7 +171,7 @@ function drawPlayer(){
 }
 function draw(){drawBackground();drawForest();drawRoad();drawObjects();drawPlayer()}
 function move(dir){if(!running||paused)return;targetLane=Math.max(0,Math.min(2,targetLane+dir))}
-function doJump(){if(!running||paused||jump>0)return;jumpVelocity=10.5}
+function doJump(){if(!running||paused||jump>0)return;jumpVelocity=5}
 function endGame(){
  running=false;gameOver=true;paused=false;
  $('panelTitle').textContent='GAME OVER';
@@ -187,7 +187,7 @@ function update(dt){
  score+=Math.max(0,Math.floor(speed*step*.025));
  world+=speed*step*0.65;
  lane+=(targetLane-lane)*Math.min(1,.18*step);
- jump+=jumpVelocity*step;jumpVelocity-=.65*step;
+ jump+=jumpVelocity*step;jumpVelocity-=0.10*step;
  if(jump<0){jump=0;jumpVelocity=0}
  spawnTimer-=dt;coinTimer-=dt;
  if(spawnTimer<=0){spawnObstacle();spawnTimer=rand(1000,1550)*(42/speed)}
