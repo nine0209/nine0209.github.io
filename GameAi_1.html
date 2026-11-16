@@ -182,17 +182,17 @@ function endGame(){
 function update(dt){
  if(!running||paused)return;
  const step=Math.min(dt,50)/16.6667;
- speed=Math.min(105,42+distance*.018);
+ speed=Math.min(40,20+distance*.08);
  distance+=speed*step*.012;
  score+=Math.max(0,Math.floor(speed*step*.025));
- world+=speed*step;
+ world+=speed*step*0.65;
  lane+=(targetLane-lane)*Math.min(1,.18*step);
  jump+=jumpVelocity*step;jumpVelocity-=.65*step;
  if(jump<0){jump=0;jumpVelocity=0}
  spawnTimer-=dt;coinTimer-=dt;
  if(spawnTimer<=0){spawnObstacle();spawnTimer=rand(1000,1550)*(42/speed)}
  if(coinTimer<=0){spawnCoins();coinTimer=rand(1600,2400)}
- const travel=speed*step*.0008;
+ const travel=speed*step*.0005;
  obstacles.forEach(o=>o.z+=travel);items.forEach(c=>c.z+=travel);
  // ตรวจชนในช่วงใกล้ตัวผู้เล่น และป้องกันการชนซ้ำ
  for(const o of obstacles){
