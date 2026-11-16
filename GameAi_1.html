@@ -59,7 +59,7 @@ const ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
 let W=innerWidth,H=innerHeight,dpr=1;
 let running=false,paused=false,gameOver=false;
-let score=0,coins=0,distance=0,speed=42,world=0;
+let score=0,coins=0,distance=0,speed=20,world=0;
 let lane=1,targetLane=1,jump=0,jumpVelocity=0;
 let obstacles=[],items=[],trees=[];
 let spawnTimer=900,coinTimer=1300,lastTime=0,raf=0;
